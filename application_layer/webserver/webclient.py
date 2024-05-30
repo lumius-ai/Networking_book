@@ -18,7 +18,6 @@ def reply_parse(reply):
     else:
         code = reply.split("\n")[0]
         data = reply.split("\n\n")[-1]
-        print(data)
         return code, data
 
     return 0
@@ -45,11 +44,21 @@ def request_send(req_type, file_name, client_socket):
         case "POST":
             print(req_type + "-ing" + " " + file_name)
             req = request_build("POST", file_name)
+            f = open(file_name, "r")
+            req =  req + f.read()
             client_socket.send(req.encode())
+            code, data = reply_parse(client_socket.recv(1024).decode())
+            print("REPLY: " + code)
+            f.close()
             return 0
         case "PUT":
             return 0
         case "DELETE":
+            print(req_type + "-ing" + " " + file_name)
+            req = request_build("DELETE", file_name)
+            client_socket.send(req.encode())
+            code, data = reply_parse(client_socket.recv(1024).decode())
+            print("REPLY: " + code)
             return 0
 
 # Start the webclient
@@ -75,7 +84,7 @@ def webclient_start(server_address="127.0.0.1", server_port=80, mode=0):
         # DELETE
         case 3:
             print("Sending DELETE")
-            request_send()
+            request_send("DELETE", "deletethis.html", client_socket)
             return 0
 
     print(f"No match to {mode}")

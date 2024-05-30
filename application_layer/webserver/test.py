@@ -1,5 +1,8 @@
 
-
+import os
     
 if __name__ == '__main__':
-    f = open("test.txt", "w")
+    try:
+        os.remove("deletethis.html")
+    except FileNotFoundError as e:
+        print(e)

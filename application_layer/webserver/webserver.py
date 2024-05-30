@@ -5,6 +5,7 @@ import time
 
 import socket
 import threading
+import os
 
 #Server global variables
 VERSION = 'HTTP/1.1'
@@ -25,6 +26,9 @@ def append_header(code, data=""):
             return s
         case 404:
             s = build_header(404, "Not Found")
+            return s
+        case 409:
+            s = build_header(409, "Conflict")
             return s
 
 def handle_connection(client_socket, client_addr):
@@ -51,11 +55,40 @@ def handle_connection(client_socket, client_addr):
             client_socket.send(d.encode())
             print("Data sent!")
         case "POST":
-            print("POST request")
+            print("POST request received")
+            req_file = req_msg.split()[1]
+            data = req_msg.split("\n\n")[-1]
+            try:
+                f = open(req_file[1:], "x")
+                f.write(data)
+                f.close()
+                client_socket.send(append_header(200).encode())
+            except FileExistsError as e:
+                print("File already exists!")
+                h = append_header(409)
+                print(h)
+                client_socket.send(h.encode())
+                client_socket.close()
+            
+
+
+
         case "PUT":
             print("PUT request")
         case "DELETE":
-            print("DELETE request")
+            print("DELETE request received")
+            req_file = req_msg.split()[1]
+            try:
+                os.remove(req_file)
+                h = append_header(200)
+                print(h)
+                client_socket.send(h.encode())
+                client_socket.close()
+            except FileNotFoundError as e:
+                h = append_header(404)
+                print(h)
+                client_socket.send(h.encode())
+                client_socket.close()
 
     client_socket.close()
     return 0
@@ -81,8 +114,8 @@ def start_server(server_addr = '127.0.0.1', server_port = 5500):
         t.start()
 
         # Auto shutdown
-        # time.sleep(30)
-        # return 0
+        time.sleep(30)
+        return 0
 
 
 if __name__ == '__main__':
