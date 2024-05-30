@@ -54,6 +54,7 @@ def handle_connection(client_socket, client_addr):
             d = append_header(200, file_data)
             client_socket.send(d.encode())
             print("Data sent!")
+            client_socket.close()
         case "POST":
             print("POST request received")
             req_file = req_msg.split()[1]
@@ -63,18 +64,40 @@ def handle_connection(client_socket, client_addr):
                 f.write(data)
                 f.close()
                 client_socket.send(append_header(200).encode())
+                client_socket.close()
+                return 0
             except FileExistsError as e:
                 print("File already exists!")
                 h = append_header(409)
                 print(h)
                 client_socket.send(h.encode())
                 client_socket.close()
+                return 1
             
 
 
 
         case "PUT":
-            print("PUT request")
+            print("PUT request received")
+            req_file = req_msg.split()[1]
+            try:
+                f = open(req_file[1:], 'a')
+                data = req_msg.split("\n\n")[-1]
+                data = "\n" + data
+                f.write(data)
+                f.close()
+                print(f"Appending {data} to {req_file}")
+                h = append_header(200)
+                client_socket.send(h.encode())
+                client_socket.close()
+                return 0
+
+            except FileNotFoundError:
+                print(f"File {req_file} not found!")
+                d = append_header(404)
+                client_socket.send(d.encode())
+                client_socket.close()
+                return 2
         case "DELETE":
             print("DELETE request received")
             req_file = req_msg.split()[1]

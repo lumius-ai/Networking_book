@@ -24,7 +24,7 @@ def reply_parse(reply):
 
 # Build the actual request header
 def request_build(req_type, file_name):
-    req = req_type + " " + '/' + file_name + " " + VERSION + "/n/n"
+    req = req_type + " " + '/' + file_name + " " + VERSION + "\n\n"
     return req
 
 def request_send(req_type, file_name, client_socket):
@@ -52,6 +52,14 @@ def request_send(req_type, file_name, client_socket):
             f.close()
             return 0
         case "PUT":
+            print(req_type + "-ing" + " " + file_name)
+            req = request_build("PUT", file_name)
+            # Add desired text
+            sentence = input("What should be added?: ")
+            req = req + sentence
+            client_socket.send(req.encode())
+            code, data = reply_parse(client_socket.recv(1024).decode())
+            print("REPLY: " + code)
             return 0
         case "DELETE":
             print(req_type + "-ing" + " " + file_name)
@@ -79,7 +87,7 @@ def webclient_start(server_address="127.0.0.1", server_port=80, mode=0):
         # PUT
         case 2:
             print("Sending PUT")
-            request_send()
+            request_send("PUT", "put_test.txt", client_socket)
             return 0
         # DELETE
         case 3:
