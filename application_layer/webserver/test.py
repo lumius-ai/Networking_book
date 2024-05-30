@@ -2,4 +2,4 @@
 
     
 if __name__ == '__main__':
-    print(get_filename("GET /index.html HTTP/1.1"))
+    f = open("test.txt", "w")

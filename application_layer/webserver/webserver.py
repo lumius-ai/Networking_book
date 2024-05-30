@@ -46,9 +46,10 @@ def handle_connection(client_socket, client_addr):
                 return 2
             file_data = f.read()
             # append header
-            print(f"Sending {req_file} to {client_addr}")
+            print(f"Sending {req_file[1:]} to {client_addr}")
             d = append_header(200, file_data)
             client_socket.send(d.encode())
+            print("Data sent!")
         case "POST":
             print("POST request")
         case "PUT":
@@ -80,8 +81,8 @@ def start_server(server_addr = '127.0.0.1', server_port = 5500):
         t.start()
 
         # Auto shutdown
-        time.sleep(30)
-        return 0
+        # time.sleep(30)
+        # return 0
 
 
 if __name__ == '__main__':
