@@ -79,7 +79,9 @@ def handle_connection(client_socket, client_addr):
             print("DELETE request received")
             req_file = req_msg.split()[1]
             try:
-                os.remove(req_file)
+                cwd = os.getcwd()
+                print(cwd)
+                os.remove(cwd + req_file)
                 h = append_header(200)
                 print(h)
                 client_socket.send(h.encode())
