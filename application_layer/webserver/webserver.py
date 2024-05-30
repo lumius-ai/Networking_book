@@ -10,11 +10,12 @@ import threading
 VERSION = 'HTTP/1.1'
 
 # Helper to append_header
-def build_header(code, string, data=NULL):
-    s = VERSION + ' ' + code + ' ' + string + data + "\n"
+def build_header(code, string, data=""):
+    s = VERSION + ' ' + str(code) + ' ' + string + "\n\n" + data
     return s
-    
-def append_header(code, data=NULL):
+
+# Build reply
+def append_header(code, data=""):
     match code:
         case 200:
             s = build_header(200, "OK", data)
@@ -35,10 +36,19 @@ def handle_connection(client_socket, client_addr):
         case "GET":
             print("GET request received")
             req_file = req_msg.split()[1]
-            f = open(req_file[1:])
+            try:
+                f = open(req_file[1:])
+            except FileNotFoundError as e:
+                print(f"File {req_file} not found!")
+                d = append_header(404)
+                client_socket.send(d.encode())
+                client_socket.close()
+                return 2
             file_data = f.read()
             # append header
-
+            print(f"Sending {req_file} to {client_addr}")
+            d = append_header(200, file_data)
+            client_socket.send(d.encode())
         case "POST":
             print("POST request")
         case "PUT":
@@ -47,7 +57,7 @@ def handle_connection(client_socket, client_addr):
             print("DELETE request")
 
     client_socket.close()
-    return 1
+    return 0
 
 
 
@@ -68,6 +78,10 @@ def start_server(server_addr = '127.0.0.1', server_port = 5500):
         print(f"Connection made to client at {client_addr}")
         t = threading.Thread(target=handle_connection, args=(connection_socket, client_addr, ))
         t.start()
+
+        # Auto shutdown
+        time.sleep(30)
+        return 0
 
 
 if __name__ == '__main__':
