@@ -3,24 +3,34 @@ import socket
 import sys
 import ssl
 
+# Test
+import base64
+
 # Message components
+DOMAIN = 'smtp.gmail.com'
 ORIGIN = "raz@testmail.com"
 DEST = ""
-MSG ="Test Message"
+MSG ="Subject: Test Message\r\nHello this is a test message"
 ENDMSG = "\r\n.\r\n"
 
 # Target mail server
 SERVER = ""
+PORT = ""
 
 # Client Socket
 CLIENT_SOCKET = ""
 
+# AUTH stuff
+USER = "user"
+PASS = "pass"
 # SMTP Commands and expected reply codes
-R_CODES = {"HELO" :"220", 
+R_CODES = {"HELO" :"250",
+"EHLO" :"250",
 "MAIL FROM" :"250",
 "RCPT TO": "250",
 "DATA" :"354",
-"QUIT" :"221"}
+"QUIT" :"221",
+"AUTH LOGIN" :"334"}
 
 # SSL wrap a socket
 def wrap_socket(sock):
@@ -35,7 +45,8 @@ def error_msg(error_code):
 
 # Send a message through the open TCP connection
 def send_data(data_content):
-    CLIENT_SOCKET.send(content.encode())
+    # CLIENT_SOCKET.send(data_content.encode())
+    CLIENT_SOCKET.sendall(data_content)
 
 # Receive and decode a message from the open TCP connection
 def get_data():
@@ -44,38 +55,72 @@ def get_data():
 
 # Send a SMTP command to the open connection
 def send_command(type, data=""):
-    match type:
-        case "HELO":
-            msg = f"{type} {data}"
-        case _:
-            msg = f"{type}: <{data}>"
+    # match type:
+    #     case "HELO":
+    #         msg = f"{type} {data}"
+    #     case _:
+    #         msg = f"{type}: <{data}>"
+    msg = f"{type} {data}" if(type == "HELO" or type == "AUTH LOGIN") else f"{type}: <{data}>"
+    msg = msg + "\r\n"
     code = R_CODES[type]
-    send_data(msg)
+    send_data(msg.encode())
+    print(f"Client: {msg}")
     m = get_data()
+    print(f"Server: {m}")
     if(m[:3] != code):
         print(error_msg(code))
         raise Exception(f"{type} error")
-    else:
-        print(m)
+
+# sends email content
+def send_content(content, mode):
+    code = ""
+    match mode:
+        # Content is a username
+        case "user":
+            code = "334"
+            c = content + "\r\n"
+            print(f"Content: {c}")
+            c = base64.b64encode(c.encode())
+            print(f"Content encoded to: {c}")
+        # Content is a password
+        case "pass":
+            code = "235"
+            c = content
+            print(f"Content: {c}")
+            c = base64.b64encode(c.encode())
+            print(f"Content encoded to: {c}")
+        #Content is mail text
+        case "body":
+            c = content + ENDMSG
+            c = c.encode()
+            code = "250"
+    send_data(c)
+    m = CLIENT_SOCKET.recv(1024).decode()
+    print(f"Server: {m}")
+    if(m[:3] != code):
+        raise Exception(error_msg(code))
 
 # Send an email to the open connection
 def send_mail(mail_text):
     try:
-        send_command("HELO", ORIGIN)
+        send_command("HELO", DOMAIN)
+
+        send_command("AUTH LOGIN")
+
+        send_content(USER, "user")
+        send_content(PASS, "pass")
+
         send_command("MAIL FROM", ORIGIN)
         send_command("RCPT TO", DEST)
         send_command("DATA")
+        
+        send_content(mail_text, "body")
 
-        CLIENT_SOCKET.send_data(mail_text+ENDMSG)
-        m = CLIENT_SOCKET.recv(1024).decode()
-        if(m[:3] != "354"):
-            raise Exception(error_msg("354"))
         send_command("QUIT")
         return 0
     except Exception as e:
-        print("Unable to send message({e})")
+        print(f"Unable to send message({e})")
         return -1
-    break
 
 # TCP connect to a server, return an ssl wrapped socket
 def connect_server(addr, port):
@@ -90,7 +135,7 @@ def connect_server(addr, port):
 def connect_mailServer(s_addr, s_port):
     client_socket = connect_server(s_addr, s_port)
     m = client_socket.recv(1024).decode()
-    print(m)
+    print(f"Server: {m}")
     if m[:3] != "220":
         print(error_msg("220"))
         raise Exception("Invalid server address")
@@ -99,18 +144,19 @@ def connect_mailServer(s_addr, s_port):
 if __name__ == "__main__":
     if(len(sys.argv) != 2):
         print("Usage: smtp_client MailAddress:MailPort:DestinationAddr")
-        return 1
     else:
-        target = argv[1].split(":")
+        target = sys.argv[1].split(":")
         if(len(target) != 3):
             print("Usage: smtp_client MailAddress:MailPort:DestinationAddr")
         else:
-            address = target[0]
-            port = target[1]
+            ADDRESS = target[0]
+            PORT = target[1]
             DEST = target[2]
+            print(f"Address: {ADDRESS}\nPort: {PORT}\nDestination: {DEST}")
             try:
-                CLIENT_SOCKET = connect_mailServer(address, port)
+                CLIENT_SOCKET = connect_mailServer(ADDRESS, PORT)
                 send_mail(MSG)
+                CLIENT_SOCKET.close()
+                # print("Message sent")
             except Exception as e:
                 print(f"Failed to connect to server: {e}")
-            return 1
